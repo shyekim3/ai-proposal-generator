@@ -4,6 +4,7 @@ import { useState } from "react";
 import { GlassCard } from "@/components/GlassCard";
 import { MarkdownView } from "@/components/MarkdownView";
 import { TEMPLATES } from "@/lib/templates";
+import { safeJson } from "@/lib/api-client";
 import type { ScrapeResult, TemplateKey } from "@/types";
 
 type Status = "idle" | "scraping" | "scraped" | "generating" | "done" | "error";
@@ -32,9 +33,12 @@ export function ProposalComposer() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "스크래핑에 실패했습니다.");
-      setScraped(data as ScrapeResult);
+      const data = await safeJson<ScrapeResult>(res);
+      if (!res.ok || "error" in data) {
+        const msg = "error" in data ? data.error : "스크래핑에 실패했습니다.";
+        throw new Error(msg);
+      }
+      setScraped(data);
       setStatus("scraped");
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "알 수 없는 오류");
@@ -76,13 +80,8 @@ export function ProposalComposer() {
       });
 
       if (!res.ok) {
-        let msg = "제안서 생성에 실패했습니다.";
-        try {
-          const err = await res.json();
-          if (err?.error) msg = err.error;
-        } catch {
-          /* ignore */
-        }
+        const data = await safeJson<{ error?: string }>(res);
+        const msg = "error" in data && data.error ? data.error : "제안서 생성에 실패했습니다.";
         throw new Error(msg);
       }
       if (!res.body) throw new Error("응답 본문을 읽을 수 없습니다.");
@@ -126,12 +125,12 @@ export function ProposalComposer() {
         body: JSON.stringify(payload),
       });
       if (res.ok) {
-        const data = await res.json();
-        setSavedId(data.id ?? null);
+        const data = await safeJson<{ id?: string }>(res);
+        if ("id" in data && data.id) setSavedId(data.id);
       } else if (res.status !== 503) {
         // 503 = Supabase 미설정 — 무시. 그 외만 가볍게 콘솔에 표시.
-        const data = await res.json().catch(() => ({}));
-        console.warn("제안서 저장 실패:", data?.error ?? res.statusText);
+        const data = await safeJson<{ error?: string }>(res);
+        console.warn("제안서 저장 실패:", "error" in data ? data.error : res.statusText);
       }
     } catch (err) {
       console.warn("제안서 저장 네트워크 오류:", err);

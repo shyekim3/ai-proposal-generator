@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { GlassCard } from "@/components/GlassCard";
+import { safeJson } from "@/lib/api-client";
 
 type Status = "loading" | "ready" | "saving" | "saved" | "error";
 
@@ -32,14 +33,15 @@ export function SystemPromptEditor() {
     setErrorMsg(null);
     try {
       const res = await fetch("/api/prompts?key=default");
-      const data = (await res.json()) as PromptResponse | { error: string };
-      if (!res.ok) throw new Error("error" in data ? data.error : "조회 실패");
-      const prompt = data as PromptResponse;
-      setContent(prompt.content);
-      setDefaultContent(prompt.defaultContent);
-      setIsCustom(prompt.isCustom);
-      setUpdatedAt(prompt.updated_at);
-      setConfigured(prompt.configured);
+      const data = await safeJson<PromptResponse>(res);
+      if (!res.ok || "error" in data) {
+        throw new Error("error" in data ? data.error : "조회 실패");
+      }
+      setContent(data.content);
+      setDefaultContent(data.defaultContent);
+      setIsCustom(data.isCustom);
+      setUpdatedAt(data.updated_at);
+      setConfigured(data.configured);
       setStatus("ready");
     } catch (err) {
       setErrorMsg(err instanceof Error ? err.message : "조회 실패");
@@ -61,8 +63,10 @@ export function SystemPromptEditor() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ key: "default", content }),
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "저장 실패");
+      const data = await safeJson<{ ok?: boolean; error?: string }>(res);
+      if (!res.ok || "error" in data) {
+        throw new Error("error" in data && data.error ? data.error : "저장 실패");
+      }
       setStatus("saved");
       setIsCustom(true);
       setUpdatedAt(new Date().toISOString());
@@ -79,8 +83,10 @@ export function SystemPromptEditor() {
     setErrorMsg(null);
     try {
       const res = await fetch("/api/prompts?key=default", { method: "DELETE" });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data?.error ?? "리셋 실패");
+      const data = await safeJson<{ ok?: boolean; error?: string }>(res);
+      if (!res.ok || "error" in data) {
+        throw new Error("error" in data && data.error ? data.error : "리셋 실패");
+      }
       setContent(defaultContent);
       setIsCustom(false);
       setUpdatedAt(undefined);

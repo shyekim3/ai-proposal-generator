@@ -3,8 +3,7 @@ import { streamOpenRouter } from "@/lib/openrouter";
 import { buildUserMessage, loadDefaultSystemPrompt } from "@/lib/prompts";
 import type { TemplateKey } from "@/types";
 
-export const runtime = "nodejs";
-export const maxDuration = 120;
+export const runtime = "edge";
 
 interface GenerateRequest {
   scrapedTitle?: string;
