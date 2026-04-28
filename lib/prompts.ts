@@ -1,4 +1,3 @@
-import { getSupabase, isSupabaseConfigured } from "@/lib/supabase";
 import type { TemplateKey } from "@/types";
 
 export const DEFAULT_PROMPT_KEY = "default";
@@ -13,26 +12,6 @@ export const DEFAULT_SYSTEM_PROMPT = `당신은 한국어 비즈니스 제안서
 - 모호한 표현 대신 구체적인 활동/지표/일정을 제안.
 - 군더더기 없이 핵심을 먼저 전달.
 - 마지막에 한 줄 짜리 핵심 요약(요약: …) 을 덧붙임.`;
-
-/**
- * DB에 저장된 default 시스템 프롬프트가 있으면 그것을 사용, 없으면 코드 상수.
- * Supabase 미설정/조회 실패 시에도 graceful하게 코드 상수를 반환.
- */
-export async function loadDefaultSystemPrompt(): Promise<string> {
-  if (!isSupabaseConfigured()) return DEFAULT_SYSTEM_PROMPT;
-  try {
-    const supabase = getSupabase();
-    const { data } = await supabase
-      .from("system_prompts")
-      .select("content")
-      .eq("key", DEFAULT_PROMPT_KEY)
-      .maybeSingle();
-    if (data?.content?.trim()) return data.content;
-  } catch {
-    /* fall through to code default */
-  }
-  return DEFAULT_SYSTEM_PROMPT;
-}
 
 export const TEMPLATE_INSTRUCTIONS: Record<Exclude<TemplateKey, "custom">, string> = {
   business: `## 사용 양식: 사업제안서

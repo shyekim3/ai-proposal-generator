@@ -67,6 +67,20 @@ export function ProposalComposer() {
     setSavedId(null);
 
     try {
+      // 사용자가 편집한 시스템 프롬프트가 있으면 함께 전달 (Edge runtime인 /api/generate 가 Supabase 미접근)
+      let systemPromptOverride: string | undefined;
+      try {
+        const promptRes = await fetch("/api/prompts?key=default");
+        if (promptRes.ok) {
+          const promptData = await safeJson<{ content?: string; isCustom?: boolean }>(promptRes);
+          if ("content" in promptData && promptData.isCustom && promptData.content) {
+            systemPromptOverride = promptData.content;
+          }
+        }
+      } catch {
+        /* 프롬프트 가져오기 실패해도 기본값으로 진행 */
+      }
+
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -76,6 +90,7 @@ export function ProposalComposer() {
           scrapedUrl: scraped.url,
           templateKey: template,
           customForm: template === "custom" ? customForm : undefined,
+          systemPromptOverride,
         }),
       });
 

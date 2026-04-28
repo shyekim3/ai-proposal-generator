@@ -1,10 +1,9 @@
 import { NextResponse } from "next/server";
 import { streamOpenRouter } from "@/lib/openrouter";
-import { buildUserMessage, loadDefaultSystemPrompt } from "@/lib/prompts";
+import { DEFAULT_SYSTEM_PROMPT, buildUserMessage } from "@/lib/prompts";
 import type { TemplateKey } from "@/types";
 
-export const runtime = "nodejs";
-export const maxDuration = 60;
+export const runtime = "edge";
 
 interface GenerateRequest {
   scrapedTitle?: string;
@@ -48,7 +47,9 @@ export async function POST(request: Request) {
     customForm,
   });
 
-  const systemPrompt = systemPromptOverride?.trim() || (await loadDefaultSystemPrompt());
+  // Edge runtime은 supabase 의존을 피하기 위해 코드 상수만 사용. 사용자가 편집한 프롬프트는
+  // 클라이언트가 systemPromptOverride 로 명시적으로 전달.
+  const systemPrompt = systemPromptOverride?.trim() || DEFAULT_SYSTEM_PROMPT;
 
   try {
     const tokenStream = await streamOpenRouter({
