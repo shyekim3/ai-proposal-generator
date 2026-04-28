@@ -1,4 +1,4 @@
-import { JSDOM } from "jsdom";
+import { parseHTML } from "linkedom";
 import { Readability } from "@mozilla/readability";
 import * as cheerio from "cheerio";
 import type { ScrapeResult } from "@/types";
@@ -43,14 +43,15 @@ export async function scrapeUrl(rawUrl: string): Promise<ScrapeResult> {
     clearTimeout(timer);
   }
 
-  const dom = new JSDOM(html, { url });
-  const reader = new Readability(dom.window.document);
+  const { document } = parseHTML(html);
+  // Readability 의 타입은 jsdom Document 를 가정하지만, linkedom 의 Document 도 런타임 호환.
+  const reader = new Readability(document as unknown as Document);
   const article = reader.parse();
 
   if (article && article.textContent && article.textContent.trim().length > 200) {
     return {
       url,
-      title: (article.title || dom.window.document.title || url).trim(),
+      title: (article.title || document.title || url).trim(),
       byline: article.byline?.trim() || null,
       excerpt: article.excerpt?.trim() || null,
       text: truncate(article.textContent.trim()),
@@ -61,7 +62,7 @@ export async function scrapeUrl(rawUrl: string): Promise<ScrapeResult> {
   const $ = cheerio.load(html);
   $("script, style, noscript, header, footer, nav, aside, form, iframe").remove();
   const fallbackText = $("body").text().replace(/\s+/g, " ").trim();
-  const fallbackTitle = $("title").first().text().trim() || dom.window.document.title || url;
+  const fallbackTitle = $("title").first().text().trim() || document.title || url;
 
   if (fallbackText.length < 80) {
     throw new Error(
