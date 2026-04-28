@@ -3,7 +3,8 @@ import { streamOpenRouter } from "@/lib/openrouter";
 import { buildUserMessage, loadDefaultSystemPrompt } from "@/lib/prompts";
 import type { TemplateKey } from "@/types";
 
-export const runtime = "edge";
+export const runtime = "nodejs";
+export const maxDuration = 60;
 
 interface GenerateRequest {
   scrapedTitle?: string;
@@ -55,6 +56,7 @@ export async function POST(request: Request) {
         { role: "system", content: systemPrompt },
         { role: "user", content: userMessage },
       ],
+      maxTokens: 2048,
     });
 
     const encoder = new TextEncoder();
